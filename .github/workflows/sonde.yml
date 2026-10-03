@@ -48,7 +48,7 @@ jobs:
         env:
           TEST_PANNE: ${{ inputs.test_panne }}
         run: |
-          set -u
+          set -u; set +e   # le shell GitHub est en -e : une fonction qui renvoie 1/2 (= panne constatée) tuerait l'étape
           BASE="https://lum-eco.fr"
           # url | mot attendu dans la page | strict / attendue
           CIBLES=(
@@ -117,8 +117,8 @@ jobs:
           FORCE: ${{ inputs.battement }}
         run: |
           H=$(TZ=Europe/Paris date '+%H')
-          if [ "${FORCE:-false}" = "true" ] || { [ "$CRON" = "0 5 * * *" ] || [ "$CRON" = "0 6 * * *" ]; } && [ "$H" = "07" ]; then
-            echo "oui=1" >> "$GITHUB_OUTPUT"
+          if [ "${FORCE:-false}" = "true" ]; then echo "oui=1" >> "$GITHUB_OUTPUT"
+          elif { [ "$CRON" = "0 5 * * *" ] || [ "$CRON" = "0 6 * * *" ]; } && [ "$H" = "07" ]; then echo "oui=1" >> "$GITHUB_OUTPUT"
           else echo "oui=0" >> "$GITHUB_OUTPUT"; fi
 
       - name: Alerte / battement Telegram
