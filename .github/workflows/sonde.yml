@@ -160,12 +160,13 @@ jobs:
         env:
           RESUME: ${{ steps.verif.outputs.resume }}
           ETAT: ${{ steps.verif.outputs.etat }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          git config user.name "sonde-lumeco"; git config user.email "sonde@users.noreply.github.com"
-          git fetch --depth=1 origin "$GITHUB_REF_NAME" && git checkout -q "$GITHUB_REF_NAME"
-          printf '# Dernier battement\n\n%s (Paris) — état %s — %s\n' "$(TZ=Europe/Paris date '+%d/%m/%Y %H:%M')" "$ETAT" "$RESUME" > DERNIER_PASSAGE.md
-          git add DERNIER_PASSAGE.md
-          git commit -q -m "battement $(TZ=Europe/Paris date '+%Y-%m-%d')" && git push -q || echo "rien à committer"
+          # Pas de checkout (le dépôt n'a rien à exécuter) : on écrit le fichier par l'API Contents.
+          CONTENU=$(printf '# Dernier battement\n\n%s (Paris) — état %s — %s\n' "$(TZ=Europe/Paris date '+%d/%m/%Y %H:%M')" "$ETAT" "$RESUME" | base64 -w0)
+          SHA=$(gh api "repos/$GITHUB_REPOSITORY/contents/DERNIER_PASSAGE.md" -q .sha 2>/dev/null || true)
+          gh api -X PUT "repos/$GITHUB_REPOSITORY/contents/DERNIER_PASSAGE.md" -f message="battement $(TZ=Europe/Paris date '+%Y-%m-%d')" \
+            -f content="$CONTENU" ${SHA:+-f sha=$SHA} >/dev/null && echo "trace écrite" || echo "trace non écrite (sans effet sur l'alerte)"
 
       - name: Échouer si panne (rend la panne visible dans l'historique)
         if: steps.verif.outputs.etat == 'ko'
